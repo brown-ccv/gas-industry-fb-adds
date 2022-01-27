@@ -97,10 +97,9 @@ def main():
         next_link = json['paging']['next']
         data = data + json['data']
 
-    # Open the file passed in as an argument and convert it into a python dict
-    args = parser.parse_args()
-    with open(args.file, "r") as f:
-        data = json.loads(f.read())
+    # DEBUG (BNR): Uncomment if you need to test with a file instead of requests
+    # with open("data.json", "r") as f:
+    #    data = json.loads(f.read())
 
     total_impressions = 0
     total_impressions_by_region = defaultdict(int)
@@ -122,7 +121,7 @@ def main():
     print(f"Total impressions: {total_impressions}")
     print("Total impressions by region:")
     for k, v in total_impressions_by_region.items():
-        print(f"{k}: {v}")
+        print(f"\t{k}: {v}")
 
 
 # This is a python convention for creating scripts
