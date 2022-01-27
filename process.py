@@ -1,8 +1,11 @@
 #!/usr/bin/env python3
 import argparse
 import json
+import requests
 
 from collections import defaultdict
+
+ACCESS_TOKEN = "<ACCESS_TOKEN>"
 
 def calculate_impressions_midpoint(data):
     """Calculate impressions midpoint"""
@@ -67,55 +70,60 @@ def calculate_impressions_by_age(data, impressions):
 
 def main():
     """Entrypoint of the program"""
-    # Tell python to read in an argument named "file" from the command line
-    parser = argparse.ArgumentParser(description="Basic analysis of FB ad data")
-    parser.add_argument("file", type=str)
+    # Store the paginated data in here
+    data = []
 
     # This might work for our request
-    # response = requests.get("https://graph.facebook.com/v5.0/ads_archive", params={
-    #     "access_token": "<YOUR ACCESS TOKEN HERE>",
-    #     "ad_type": "POLITICAL_AND_ISSUE_ADS",
-    #     "ad_active_status": "ALL",
-    #     "search_page_ids": "100801038449520",
-    #     "ad_reached_countries": "[US]",
-    #     "ad_delivery_date_min": "2020-09-01",
-    #     "ad_delivery_date_max": "2021-12-31",
-    #     "fields": "id, ad_delivery_start_time, ad_delivery_stop_time, ad_snapshot_url, bylines, delivery_by_region, demographic_distribution, impressions, publisher_platforms, spend"
-    # })
-    # data = response.json()
+    response = requests.get("https://graph.facebook.com/v5.0/ads_archive", params={
+        "access_token": ACCESS_TOKEN,
+        "ad_type": "POLITICAL_AND_ISSUE_ADS",
+        "ad_active_status": "ALL",
+        "search_page_ids": "100801038449520",
+        "ad_reached_countries": ["US"],
+        "ad_delivery_date_min": "2020-09-01",
+        "ad_delivery_date_max": "2020-12-31",
+        "fields": "id, ad_delivery_start_time, ad_delivery_stop_time, ad_snapshot_url, bylines, delivery_by_region, demographic_distribution, impressions, publisher_platforms, spend"
+    })
+
+    # Get the json document and pull out the next link and the data
+    json = response.json()
+    next_link = json['paging']['next']
+    data = data + json['data']
+
+    # Loop through the next links and collect the data
+    while next_link:
+        response = requests.get(next_link)
+        json = response.json()
+        next_link = json['paging']['next']
+        data = data + json['data']
 
     # Open the file passed in as an argument and convert it into a python dict
     args = parser.parse_args()
     with open(args.file, "r") as f:
         data = json.loads(f.read())
 
-    # Grab the first object from the data array
-    d = data["data"][0]
+    total_impressions = 0
+    total_impressions_by_region = defaultdict(int)
+    for d in data["data"]:
+        try:
+            # Calculate different impression data
+            impressions = calculate_impressions_midpoint(d)
+            impressions_by_region = calculate_impressions_by_region(d, impressions)
 
-    # Calculate different impression data
-    impressions = calculate_impressions_midpoint(d)
-    impressions_by_region = calculate_impressions_by_region(d, impressions) 
-    impressions_by_gender = calculate_impressions_by_gender(d, impressions)
-    impressions_by_age = calculate_impressions_by_age(d, impressions)
+            # Aggregate impressions
+            total_impressions = impressions + total_impressions
+            for k, v in impressions_by_region.items():
+                total_impressions_by_region[k] += v
 
-    # Log the data
-    print("Impressions by region:")
+        except Exception:
+            pass
 
-    # This for loop takes each key value pair and prints them.
-    # The .items() call returns the key, value pairs as tuples and the (k, v)
-    # saves the key to k, and the value to v
-    for (k, v) in impressions_by_region.items():
-        # This is a format string, the {} tell python to replace what's inside
-        # with the contents of a variable
+    # Log out the impressions by region
+    print(f"Total impressions: {total_impressions}")
+    print("Total impressions by region:")
+    for k, v in total_impressions_by_region.items():
         print(f"{k}: {v}")
 
-    print("\nImpressions by gender:")
-    for (k, v) in impressions_by_gender.items():
-        print(f"{k}: {v}")
-
-    print("\nImpressions by age:")
-    for (k, v) in impressions_by_age.items():
-        print(f"{k}: {v}")
 
 # This is a python convention for creating scripts
 if __name__ == "__main__":
