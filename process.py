@@ -92,12 +92,14 @@ def main():
 
     # Loop through the next links and collect the data
     while next_link:
+        print('.', end='')
         response = requests.get(next_link)
         json = response.json()
         if 'paging' not in json:
             break
         next_link = json['paging']['next']
         data = data + json['data']
+    print('\n')
 
     # DEBUG (BNR): Uncomment if you need to test with a file instead of requests
     # with open("data.json", "r") as f:
