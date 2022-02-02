@@ -94,6 +94,8 @@ def main():
     while next_link:
         response = requests.get(next_link)
         json = response.json()
+        if 'paging' not in json:
+            break
         next_link = json['paging']['next']
         data = data + json['data']
 
