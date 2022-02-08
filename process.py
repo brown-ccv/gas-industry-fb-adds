@@ -107,7 +107,7 @@ def main():
 
     total_impressions = 0
     total_impressions_by_region = defaultdict(int)
-    for d in data["data"]:
+    for d in data:
         try:
             # Calculate different impression data
             impressions = calculate_impressions_midpoint(d)
